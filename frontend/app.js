@@ -1,4 +1,4 @@
-const API_URL = "http://YOUR_VM_EXTERNAL_IP:3000";
+const API_URL = "http://34.171.204.163:3000";
 
 function login() {
 

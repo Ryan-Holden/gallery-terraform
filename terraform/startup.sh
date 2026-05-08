@@ -1,5 +1,7 @@
 #!/bin/bash
 
+exec > /var/log/startup-script.log 2>&1
+
 apt update -y
 
 apt install -y nodejs npm git default-mysql-client
@@ -8,7 +10,7 @@ cd /home
 
 git clone https://github.com/Ryan-Holden/gallery-terraform.git
 
-cd gallery-terraform/backend
+cd /home/gallery-terraform/backend
 
 npm install
 
@@ -23,6 +25,8 @@ DB_PASSWORD=${db_password}
 DB_NAME=gallerydb
 EOF
 
+sleep 60
+
 cat > init.sql <<EOF
 CREATE DATABASE IF NOT EXISTS gallerydb;
 
@@ -36,7 +40,7 @@ EOF
 
 mysql -h ${db_host} -u root -p${db_password} < init.sql
 
-sed -i '1i app.use(express.static("public"));' server.js
+grep -q 'express.static("public")' server.js || sed -i '/app.use(express.json());/a app.use(express.static("public"));' server.js
 
 npm install -g pm2
 
