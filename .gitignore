@@ -1,5 +1,8 @@
 .terraform/
 *.tfstate
 *.tfstate.*
-errored.tfstate
 .terraform.lock.hcl
+node_modules/
+.env
+backend/uploads/
+errored.tfstate

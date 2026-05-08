@@ -20,11 +20,39 @@ resource "google_compute_firewall" "allow_http" {
   }
 
   source_ranges = ["0.0.0.0/0"]
+
+  target_tags = ["gallery-server"]
+}
+
+resource "google_compute_firewall" "allow_ssh" {
+  name    = "allow-ssh"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = ["35.235.240.0/20"]
+
+  target_tags = ["gallery-server"]
 }
 
 resource "google_service_account" "gallery_sa" {
   account_id   = "gallery-service-account"
   display_name = "Gallery Service Account"
+}
+
+resource "google_project_iam_member" "compute_viewer" {
+  project = var.project_id
+  role    = "roles/compute.viewer"
+  member  = "serviceAccount:${google_service_account.gallery_sa.email}"
+}
+
+resource "google_project_iam_member" "sql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.gallery_sa.email}"
 }
 
 resource "google_compute_global_address" "private_ip_address" {
@@ -38,25 +66,27 @@ resource "google_compute_global_address" "private_ip_address" {
 resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+  reserved_peering_ranges = [
+    google_compute_global_address.private_ip_address.name
+  ]
 }
 
 resource "google_sql_database_instance" "mysql" {
   name             = "gallery-mysql"
   database_version = "MYSQL_8_0"
 
+  depends_on = [
+    google_service_networking_connection.private_vpc_connection
+  ]
+
   settings {
-    tier = "db-n1-standard-1"
+    tier = "db-custom-1-3840"
 
     ip_configuration {
       ipv4_enabled    = false
       private_network = google_compute_network.vpc.id
     }
   }
-
-  depends_on = [
-    google_service_networking_connection.private_vpc_connection
-  ]
 
   deletion_protection = false
 }
@@ -77,6 +107,8 @@ resource "google_compute_instance" "vm_instance" {
   machine_type = "e2-standard-2"
   zone         = var.zone
 
+  tags = ["gallery-server"]
+
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-12"
@@ -90,7 +122,7 @@ resource "google_compute_instance" "vm_instance" {
     }
   }
 
-  metadata_startup_script = templatefile("startup.sh", {
+  metadata_startup_script = templatefile("${path.module}/startup.sh", {
     db_host     = google_sql_database_instance.mysql.private_ip_address
     db_password = var.db_password
   })
@@ -100,31 +132,7 @@ resource "google_compute_instance" "vm_instance" {
     scopes = ["cloud-platform"]
   }
 
-  tags = ["gallery-server"]
-}
-
-resource "google_project_iam_member" "compute_admin" {
-  project = var.project_id
-  role    = "roles/compute.viewer"
-  member  = "serviceAccount:${google_service_account.gallery_sa.email}"
-}
-
-resource "google_project_iam_member" "sql_client" {
-  project = var.project_id
-  role    = "roles/cloudsql.client"
-  member  = "serviceAccount:${google_service_account.gallery_sa.email}"
-}
-
-resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh"
-  network = google_compute_network.vpc.name
-
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-
-  source_ranges = ["35.235.240.0/20"]
-
-  target_tags = ["gallery-server"]
+  depends_on = [
+    google_sql_database_instance.mysql
+  ]
 }

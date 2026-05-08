@@ -1,10 +1,15 @@
-const API_URL = "http://34.171.204.163:3000";
+const API_URL = "";
 
 function login() {
 
     const username = document.getElementById("username").value;
 
-    fetch(`${API_URL}/login`, {
+    if (!username) {
+        alert("Please enter a username");
+        return;
+    }
+
+    fetch("/login", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -15,8 +20,14 @@ function login() {
     })
     .then(res => res.json())
     .then(data => {
+
         localStorage.setItem("username", username);
+
         window.location.href = "index.html";
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Login failed");
     });
 }
 
@@ -24,23 +35,35 @@ function uploadPhoto() {
 
     const fileInput = document.getElementById("photoInput");
 
+    if (!fileInput.files[0]) {
+        alert("Please select a photo");
+        return;
+    }
+
     const formData = new FormData();
 
     formData.append("photo", fileInput.files[0]);
 
-    fetch(`${API_URL}/upload`, {
+    fetch("/upload", {
         method: "POST",
         body: formData
     })
     .then(res => res.json())
     .then(data => {
+
+        console.log(data);
+
         loadPhotos();
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Upload failed");
     });
 }
 
 function loadPhotos() {
 
-    fetch(`${API_URL}/photos`)
+    fetch("/photos")
     .then(res => res.json())
     .then(data => {
 
@@ -52,10 +75,14 @@ function loadPhotos() {
 
             const img = document.createElement("img");
 
-            img.src = `${API_URL}/uploads/${photo.filename}`;
+            img.src = `/uploads/${photo.filename}`;
 
             gallery.appendChild(img);
         });
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Failed to load photos");
     });
 }
 
