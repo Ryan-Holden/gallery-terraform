@@ -4,10 +4,11 @@ resource "google_compute_network" "vpc" {
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name          = "gallery-subnet"
-  ip_cidr_range = "10.0.0.0/16"
-  network       = google_compute_network.vpc.id
-  region        = var.region
+  name                     = "gallery-subnet"
+  ip_cidr_range            = "10.0.0.0/16"
+  network                  = google_compute_network.vpc.id
+  region                   = var.region
+  private_ip_google_access = true
 }
 
 resource "google_compute_firewall" "allow_http" {

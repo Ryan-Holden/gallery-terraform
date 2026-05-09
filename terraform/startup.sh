@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 exec > /tmp/startup-script.log 2>&1
 
