@@ -10,7 +10,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
 app.use(express.static("public"));
+
 app.use("/uploads", express.static("uploads"));
 
 if (!fs.existsSync("uploads")) {
@@ -51,13 +53,24 @@ app.post("/login", (req, res) => {
 
 app.post("/upload", upload.single("photo"), (req, res) => {
 
+    if (!req.file) {
+        return res.status(400).json({
+            message: "No file uploaded"
+        });
+    }
+
     const imagePath = req.file.filename;
 
     const sql = "INSERT INTO photos (filename) VALUES (?)";
 
     db.query(sql, [imagePath], (err, result) => {
+
         if (err) {
-            return res.status(500).json(err);
+            console.log(err);
+
+            return res.status(500).json({
+                message: "Database insert failed"
+            });
         }
 
         res.json({
@@ -70,8 +83,11 @@ app.post("/upload", upload.single("photo"), (req, res) => {
 app.get("/photos", (req, res) => {
 
     db.query("SELECT * FROM photos", (err, results) => {
+
         if (err) {
-            return res.status(500).json(err);
+            return res.status(500).json({
+                message: "Database query failed"
+            });
         }
 
         res.json(results);
@@ -80,6 +96,6 @@ app.get("/photos", (req, res) => {
 
 const PORT = 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
 });

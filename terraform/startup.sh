@@ -1,6 +1,6 @@
 #!/bin/bash
 
-exec > /var/log/startup-script.log 2>&1
+exec > /tmp/startup-script.log 2>&1
 
 apt update -y
 
@@ -25,7 +25,9 @@ DB_PASSWORD=${db_password}
 DB_NAME=gallerydb
 EOF
 
-sleep 60
+echo "Waiting for Cloud SQL..."
+
+sleep 90
 
 cat > init.sql <<EOF
 CREATE DATABASE IF NOT EXISTS gallerydb;
@@ -40,12 +42,10 @@ EOF
 
 mysql -h ${db_host} -u root -p${db_password} < init.sql
 
-grep -q 'express.static("public")' server.js || sed -i '/app.use(express.json());/a app.use(express.static("public"));' server.js
-
 npm install -g pm2
 
 pm2 start server.js --name gallery-app
 
 pm2 save
 
-pm2 startup systemd -u root --hp /root
+env PATH=\$PATH:/usr/bin pm2 startup systemd -u root --hp /root
