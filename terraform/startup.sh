@@ -11,7 +11,11 @@ http://metadata.google.internal/computeMetadata/v1/instance/attributes/db_passwo
 
 apt update -y
 
-apt install -y nodejs npm git default-mysql-client
+apt install -y git default-mysql-client curl
+
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+apt install -y nodejs
 
 cd /home
 
