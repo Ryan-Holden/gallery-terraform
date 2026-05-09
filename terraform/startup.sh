@@ -14,7 +14,9 @@ apt install -y nodejs npm git default-mysql-client
 
 cd /home
 
-git clone https://github.com/Ryan-Holden/gallery-terraform.git
+if [ ! -d "/home/gallery-terraform" ]; then
+    git clone https://github.com/Ryan-Holden/gallery-terraform.git
+fi
 
 cd /home/gallery-terraform/backend
 
@@ -33,7 +35,9 @@ EOF
 
 echo "Waiting for Cloud SQL..."
 
-sleep 90
+until mysqladmin ping -h "$DB_HOST" --silent; do
+    sleep 5
+done
 
 cat > init.sql <<EOF
 CREATE DATABASE IF NOT EXISTS gallerydb;
@@ -53,3 +57,5 @@ npm install -g pm2
 pm2 start server.js --name gallery-app
 
 pm2 save
+
+pm2 startup systemd -u root --hp /root
