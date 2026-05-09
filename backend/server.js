@@ -227,6 +227,10 @@ app.get('/api/stats', authMiddleware, (req, res) => {
   });
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'UP' });
+});
+
 // Start server
 initDb().then(() => {
   app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
