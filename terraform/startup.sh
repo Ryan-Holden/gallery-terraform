@@ -2,6 +2,12 @@
 
 exec > /tmp/startup-script.log 2>&1
 
+DB_HOST=$(curl -H "Metadata-Flavor: Google" \
+http://metadata.google.internal/computeMetadata/v1/instance/attributes/db_host)
+
+DB_PASSWORD=$(curl -H "Metadata-Flavor: Google" \
+http://metadata.google.internal/computeMetadata/v1/instance/attributes/db_password)
+
 apt update -y
 
 apt install -y nodejs npm git default-mysql-client
@@ -19,9 +25,9 @@ mkdir -p public
 cp -r ../frontend/* public/
 
 cat > .env <<EOF
-DB_HOST=${db_host}
+DB_HOST=$DB_HOST
 DB_USER=root
-DB_PASSWORD=${db_password}
+DB_PASSWORD=$DB_PASSWORD
 DB_NAME=gallerydb
 EOF
 
@@ -40,12 +46,10 @@ CREATE TABLE IF NOT EXISTS photos (
 );
 EOF
 
-mysql -h ${db_host} -u root -p${db_password} < init.sql
+mysql -h $DB_HOST -u root -p$DB_PASSWORD < init.sql
 
 npm install -g pm2
 
 pm2 start server.js --name gallery-app
 
 pm2 save
-
-env PATH=\$PATH:/usr/bin pm2 startup systemd -u root --hp /root

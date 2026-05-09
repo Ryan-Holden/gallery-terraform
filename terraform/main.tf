@@ -122,10 +122,12 @@ resource "google_compute_instance" "vm_instance" {
     }
   }
 
-  metadata_startup_script = templatefile("${path.module}/startup.sh", {
+  metadata = {
     db_host     = google_sql_database_instance.mysql.private_ip_address
     db_password = var.db_password
-  })
+  }
+
+  metadata_startup_script = file("${path.module}/startup.sh")
 
   service_account {
     email  = google_service_account.gallery_sa.email
