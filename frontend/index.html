@@ -1,24 +1,1250 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Photo Gallery</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luminary — Photo Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg: #0a0a0b;
+      --surface: #111113;
+      --surface2: #1a1a1d;
+      --border: #2a2a2e;
+      --border2: #3a3a3e;
+      --text: #e8e6e0;
+      --text-dim: #888880;
+      --text-faint: #444440;
+      --accent: #c8a96e;
+      --accent-dim: #8a7248;
+      --accent-glow: rgba(200, 169, 110, 0.15);
+      --red: #c86e6e;
+      --green: #6ec8a0;
+      --radius: 2px;
+      --font-body: 'DM Mono', monospace;
+      --font-display: 'Cormorant Garamond', serif;
+    }
+ 
+    html { scroll-behavior: smooth; }
+ 
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+ 
+    /* ── NOISE TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.6;
+    }
+ 
+    /* ── PAGES ── */
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: block; }
+ 
+    /* ── AUTH PAGE ── */
+    #auth-page {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    #auth-page.active { display: flex; }
+ 
+    .auth-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 80% at 20% 50%, rgba(200,169,110,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 80% 20%, rgba(200,169,110,0.04) 0%, transparent 60%);
+    }
+ 
+    .auth-lines {
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 59px, var(--border) 60px),
+        repeating-linear-gradient(90deg, transparent, transparent 59px, var(--border) 60px);
+      opacity: 0.3;
+    }
+ 
+    .auth-card {
+      position: relative;
+      width: 420px;
+      padding: 48px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      animation: fadeUp 0.6s ease;
+    }
+ 
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+ 
+    .auth-logo h1 {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+      color: var(--text);
+    }
+ 
+    .auth-logo p {
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+ 
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+ 
+    .auth-tab {
+      flex: 1;
+      padding: 12px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+ 
+    .auth-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+ 
+    .form-group { margin-bottom: 20px; }
+ 
+    .form-label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+ 
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+ 
+    .form-input:focus {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+ 
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+ 
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-primary:hover { background: #d9ba7f; }
+ 
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+ 
+    .btn-danger {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--red);
+      font-size: 10px;
+      padding: 6px 10px;
+    }
+    .btn-danger:hover { border-color: var(--red); background: rgba(200,110,110,0.1); }
+ 
+    .btn-sm { padding: 7px 14px; font-size: 10px; }
+ 
+    .error-msg {
+      color: var(--red);
+      font-size: 11px;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(200,110,110,0.08);
+      border: 1px solid rgba(200,110,110,0.2);
+      display: none;
+    }
+    .error-msg.show { display: block; }
+ 
+    /* ── GALLERY PAGE ── */
+    #gallery-page { display: none; flex-direction: column; }
+    #gallery-page.active { display: flex; }
+ 
+    /* ── NAV ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 32px;
+      height: 60px;
+      background: rgba(10,10,11,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+ 
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-right: auto;
+    }
+ 
+    .nav-logo span { color: var(--accent); }
+ 
+    .nav-tabs {
+      display: flex;
+      gap: 2px;
+      margin-right: 24px;
+    }
+ 
+    .nav-tab {
+      padding: 8px 16px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--font-body);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+ 
+    .nav-tab::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0; right: 0;
+      height: 1px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform 0.2s;
+    }
+ 
+    .nav-tab.active { color: var(--accent); }
+    .nav-tab.active::after { transform: scaleX(1); }
+ 
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+ 
+    .nav-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--bg);
+      font-weight: 500;
+    }
+ 
+    /* ── CONTENT AREA ── */
+    .content { flex: 1; padding: 40px 32px; max-width: 1400px; margin: 0 auto; width: 100%; }
+ 
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display: flex;
+      gap: 1px;
+      margin-bottom: 40px;
+      background: var(--border);
+    }
+ 
+    .stat {
+      flex: 1;
+      padding: 20px 24px;
+      background: var(--surface);
+    }
+ 
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 300;
+      color: var(--accent);
+      line-height: 1;
+    }
+ 
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-top: 6px;
+    }
+ 
+    /* ── UPLOAD ZONE ── */
+    .upload-section {
+      margin-bottom: 40px;
+      padding: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+ 
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      margin-bottom: 24px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+ 
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+ 
+    .upload-zone {
+      border: 1px dashed var(--border2);
+      padding: 48px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+ 
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent-dim);
+      background: var(--accent-glow);
+    }
+ 
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+ 
+    .upload-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+ 
+    .upload-text {
+      color: var(--text-dim);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+ 
+    .upload-meta {
+      font-size: 10px;
+      color: var(--text-faint);
+      margin-top: 6px;
+    }
+ 
+    .upload-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 20px;
+    }
+ 
+    .upload-preview {
+      margin-top: 16px;
+      display: none;
+    }
+ 
+    .upload-preview.show { display: block; }
+ 
+    .preview-img {
+      max-height: 120px;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      display: block;
+      margin: 0 auto 12px;
+    }
+ 
+    .preview-name {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+ 
+    /* ── PHOTO GRID ── */
+    .grid-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+ 
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 2px;
+    }
+ 
+    .photo-card {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--surface2);
+      animation: fadeIn 0.4s ease;
+    }
+ 
+    .photo-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+      display: block;
+    }
+ 
+    .photo-card:hover img { transform: scale(1.05); }
+ 
+    .photo-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 16px;
+    }
+ 
+    .photo-card:hover .photo-overlay { opacity: 1; }
+ 
+    .photo-card-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 400;
+      color: #fff;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+ 
+    .photo-card-meta {
+      font-size: 10px;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.08em;
+    }
+ 
+    .photo-card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+ 
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      font-size: 13px;
+      transition: background 0.2s;
+      backdrop-filter: blur(4px);
+      border-radius: var(--radius);
+    }
+ 
+    .icon-btn:hover { background: rgba(255,255,255,0.3); }
+    .icon-btn.danger:hover { background: rgba(200,110,110,0.5); }
+ 
+    /* ── OWNER BADGE ── */
+    .owner-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--accent);
+      color: var(--bg);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .photo-card:hover .owner-badge { opacity: 1; }
+ 
+    /* ── LIGHTBOX ── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(5,5,6,0.96);
+      backdrop-filter: blur(8px);
+      animation: fadeIn 0.2s ease;
+    }
+ 
+    .lightbox.open { display: flex; align-items: center; justify-content: center; }
+ 
+    .lightbox-content {
+      display: flex;
+      gap: 0;
+      max-width: 90vw;
+      max-height: 90vh;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      animation: scaleIn 0.25s ease;
+    }
+ 
+    .lightbox-img-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      min-width: 400px;
+      max-width: 70vw;
+      max-height: 90vh;
+    }
+ 
+    .lightbox-img-wrap img {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      display: block;
+    }
+ 
+    .lightbox-info {
+      width: 280px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+ 
+    .lightbox-close {
+      align-self: flex-end;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      margin-bottom: 24px;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .lightbox-close:hover { color: var(--text); }
+ 
+    .lightbox-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 300;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+ 
+    .lightbox-desc {
+      color: var(--text-dim);
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+ 
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+ 
+    .meta-key { color: var(--text-faint); letter-spacing: 0.1em; }
+    .meta-val { color: var(--text-dim); }
+ 
+    .lightbox-actions {
+      margin-top: auto;
+      padding-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+ 
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+      color: var(--text-faint);
+    }
+ 
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+ 
+    .empty-state h3 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 300;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+ 
+    .empty-state p { font-size: 12px; }
+ 
+    /* ── TOAST ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+ 
+    .toast {
+      padding: 12px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      font-size: 12px;
+      color: var(--text);
+      animation: slideIn 0.3s ease;
+      max-width: 300px;
+    }
+ 
+    .toast.error { border-left-color: var(--red); }
+    .toast.success { border-left-color: var(--green); }
+ 
+    /* ── LOADING ── */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+ 
+    .loading-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(10,10,11,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .loading-overlay.show { display: flex; }
+ 
+    /* ── ANIMATIONS ── */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+ 
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+ 
+    .filter-chip {
+      padding: 6px 14px;
+      font-family: var(--font-body);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+ 
+    .filter-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+ 
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); }
+ 
+    @media (max-width: 768px) {
+      .auth-card { width: 100%; max-width: 400px; padding: 32px 24px; margin: 16px; }
+      .nav { padding: 0 16px; }
+      .content { padding: 24px 16px; }
+      .photo-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+      .lightbox-content { flex-direction: column; max-width: 95vw; }
+      .lightbox-img-wrap { min-width: unset; max-width: 95vw; }
+      .lightbox-info { width: 100%; }
+      .upload-form-row { grid-template-columns: 1fr; }
+      .stats-bar { flex-wrap: wrap; }
+    }
+  </style>
 </head>
 <body>
-
-<div class="container">
-
-    <h1>Photo Gallery</h1>
-
-    <input type="file" id="photoInput">
-
-    <button onclick="uploadPhoto()">Upload</button>
-
-    <div id="gallery"></div>
-
+ 
+<!-- ── AUTH PAGE ── -->
+<div id="auth-page" class="page active">
+  <div class="auth-bg"></div>
+  <div class="auth-lines"></div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>Luminary</h1>
+      <p>Your personal photo gallery</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchTab('register')">Register</button>
+    </div>
+ 
+    <!-- Login Form -->
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="login-username" type="text" placeholder="your username" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <button class="btn btn-primary" onclick="login()">
+        <span id="login-btn-text">Sign In</span>
+      </button>
+      <div class="error-msg" id="login-error"></div>
+    </div>
+ 
+    <!-- Register Form -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="reg-username" type="text" placeholder="choose a username" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="reg-password" type="password" placeholder="min. 6 characters" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input class="form-input" id="reg-confirm" type="password" placeholder="repeat password" autocomplete="new-password" />
+      </div>
+      <button class="btn btn-primary" onclick="register()">
+        <span id="reg-btn-text">Create Account</span>
+      </button>
+      <div class="error-msg" id="reg-error"></div>
+    </div>
+  </div>
 </div>
-
-<script src="app.js"></script>
-
+ 
+<!-- ── GALLERY PAGE ── -->
+<div id="gallery-page" class="page">
+  <nav class="nav">
+    <div class="nav-logo">Lumin<span>a</span>ry</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-all" onclick="switchView('all')">All Photos</button>
+      <button class="nav-tab" id="tab-my" onclick="switchView('my')">My Gallery</button>
+      <button class="nav-tab" id="tab-upload" onclick="switchView('upload')">Upload</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-avatar" id="user-avatar">?</div>
+      <span id="user-name-display"></span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+ 
+  <div class="content">
+ 
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Total Photos</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-mine">—</div>
+        <div class="stat-label">My Uploads</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="stat-users">—</div>
+        <div class="stat-label">Members</div>
+      </div>
+    </div>
+ 
+    <!-- All Photos View -->
+    <div id="view-all">
+      <div class="section-title">Community Gallery</div>
+      <div id="photo-grid-all" class="photo-grid"></div>
+    </div>
+ 
+    <!-- My Photos View -->
+    <div id="view-my" style="display:none">
+      <div class="section-title">My Gallery</div>
+      <div id="photo-grid-my" class="photo-grid"></div>
+    </div>
+ 
+    <!-- Upload View -->
+    <div id="view-upload" style="display:none">
+      <div class="upload-section">
+        <div class="section-title">Upload Photo</div>
+ 
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)" />
+          <div class="upload-icon">◈</div>
+          <div class="upload-text">Drop an image here or click to browse</div>
+          <div class="upload-meta">JPEG · PNG · GIF · WEBP · SVG — max 20MB</div>
+        </div>
+ 
+        <div class="upload-preview" id="upload-preview">
+          <img class="preview-img" id="preview-img" src="" alt="" />
+          <div class="preview-name" id="preview-name"></div>
+        </div>
+ 
+        <div class="upload-form-row">
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input class="form-input" id="photo-title" type="text" placeholder="Give it a name..." />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" id="photo-desc" type="text" placeholder="Optional caption..." />
+          </div>
+        </div>
+ 
+        <button class="btn btn-primary" onclick="uploadPhoto()" id="upload-btn" style="max-width: 200px;">
+          Publish Photo
+        </button>
+        <div class="error-msg" id="upload-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <div class="lightbox-content" onclick="event.stopPropagation()">
+    <div class="lightbox-img-wrap">
+      <img id="lightbox-img" src="" alt="" />
+    </div>
+    <div class="lightbox-info">
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+      <div class="lightbox-title" id="lb-title"></div>
+      <div class="lightbox-desc" id="lb-desc"></div>
+      <div id="lb-meta"></div>
+      <div class="lightbox-actions">
+        <button class="btn btn-ghost" onclick="downloadPhoto(currentPhoto.id, currentPhoto.original_name)">
+          ↓ Download
+        </button>
+        <button class="btn btn-danger" id="lb-delete-btn" onclick="deletePhoto(currentPhoto.id)">
+          Delete Photo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- ── TOAST CONTAINER ── -->
+<div class="toast-container" id="toast-container"></div>
+ 
+<script>
+  const API = 'http://localhost:3001';
+  let token = localStorage.getItem('token');
+  let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+  let currentPhoto = null;
+  let currentView = 'all';
+ 
+  // ── INIT ──
+  if (token && currentUser) showGallery();
+  else showAuth();
+ 
+  // ── PAGE SWITCHING ──
+  function showAuth() {
+    document.getElementById('auth-page').classList.add('active');
+    document.getElementById('gallery-page').classList.remove('active');
+  }
+ 
+  function showGallery() {
+    document.getElementById('auth-page').classList.remove('active');
+    document.getElementById('gallery-page').classList.add('active');
+    document.getElementById('user-name-display').textContent = currentUser.username;
+    document.getElementById('user-avatar').textContent = currentUser.username[0].toUpperCase();
+    loadStats();
+    loadAllPhotos();
+  }
+ 
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0) === (tab === 'login')));
+    document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  }
+ 
+  function switchView(view) {
+    currentView = view;
+    ['all', 'my', 'upload'].forEach(v => {
+      document.getElementById(`view-${v}`).style.display = v === view ? 'block' : 'none';
+      document.getElementById(`tab-${v}`).classList.toggle('active', v === view);
+    });
+    if (view === 'all') loadAllPhotos();
+    if (view === 'my') loadMyPhotos();
+  }
+ 
+  // ── AUTH ──
+  async function login() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!username || !password) return showError('login-error', 'Please fill all fields');
+    document.getElementById('login-btn-text').textContent = 'Signing in...';
+    try {
+      const res = await fetch(`${API}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      token = data.token;
+      currentUser = data.user;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      showGallery();
+    } catch (e) {
+      showError('login-error', e.message);
+    } finally {
+      document.getElementById('login-btn-text').textContent = 'Sign In';
+    }
+  }
+ 
+  async function register() {
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const confirm = document.getElementById('reg-confirm').value;
+    if (!username || !password) return showError('reg-error', 'Please fill all fields');
+    if (password !== confirm) return showError('reg-error', 'Passwords do not match');
+    document.getElementById('reg-btn-text').textContent = 'Creating account...';
+    try {
+      const res = await fetch(`${API}/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      token = data.token;
+      currentUser = data.user;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      showGallery();
+      toast('Welcome to Luminary!', 'success');
+    } catch (e) {
+      showError('reg-error', e.message);
+    } finally {
+      document.getElementById('reg-btn-text').textContent = 'Create Account';
+    }
+  }
+ 
+  function logout() {
+    token = null;
+    currentUser = null;
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    showAuth();
+  }
+ 
+  // ── STATS ──
+  async function loadStats() {
+    try {
+      const res = await fetch(`${API}/api/stats`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      document.getElementById('stat-total').textContent = data.totalPhotos;
+      document.getElementById('stat-mine').textContent = data.myPhotos;
+      document.getElementById('stat-users').textContent = data.totalUsers;
+    } catch {}
+  }
+ 
+  // ── PHOTOS ──
+  async function loadAllPhotos() {
+    const grid = document.getElementById('photo-grid-all');
+    grid.innerHTML = '<div style="color:var(--text-faint);font-size:11px;padding:20px">Loading...</div>';
+    try {
+      const res = await fetch(`${API}/api/photos`, { headers: { Authorization: `Bearer ${token}` } });
+      const photos = await res.json();
+      renderGrid(grid, photos, false);
+    } catch (e) { grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠</div><h3>Failed to load</h3><p>${e.message}</p></div>`; }
+  }
+ 
+  async function loadMyPhotos() {
+    const grid = document.getElementById('photo-grid-my');
+    grid.innerHTML = '<div style="color:var(--text-faint);font-size:11px;padding:20px">Loading...</div>';
+    try {
+      const res = await fetch(`${API}/api/photos/my`, { headers: { Authorization: `Bearer ${token}` } });
+      const photos = await res.json();
+      renderGrid(grid, photos, true);
+    } catch (e) { grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠</div><h3>Failed to load</h3></div>`; }
+  }
+ 
+  function renderGrid(container, photos, isOwner) {
+    if (!photos.length) {
+      container.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state-icon">◻</div>
+        <h3>No photos yet</h3>
+        <p>${isOwner ? 'Upload your first photo to get started' : 'Be the first to share a photo'}</p>
+      </div>`;
+      return;
+    }
+    container.innerHTML = photos.map(p => `
+      <div class="photo-card" onclick="openLightbox(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+        <img src="${API}${p.url}" alt="${escHtml(p.title)}" loading="lazy" />
+        <div class="photo-overlay">
+          <div class="photo-card-title">${escHtml(p.title)}</div>
+          <div class="photo-card-meta">by ${escHtml(p.username || currentUser.username)} · ${formatDate(p.created_at)}</div>
+          <div class="photo-card-actions" onclick="event.stopPropagation()">
+            <button class="icon-btn" title="Download" onclick="downloadPhoto('${p.id}', '${escHtml(p.original_name)}')">↓</button>
+            ${(p.user_id === currentUser.id || isOwner) ? `<button class="icon-btn danger" title="Delete" onclick="deletePhoto('${p.id}')">✕</button>` : ''}
+          </div>
+        </div>
+        ${p.user_id === currentUser.id ? '<div class="owner-badge">Mine</div>' : ''}
+      </div>
+    `).join('');
+  }
+ 
+  // ── LIGHTBOX ──
+  function openLightbox(photo) {
+    currentPhoto = photo;
+    document.getElementById('lightbox-img').src = `${API}${photo.url}`;
+    document.getElementById('lb-title').textContent = photo.title;
+    document.getElementById('lb-desc').textContent = photo.description || 'No description';
+    document.getElementById('lb-meta').innerHTML = `
+      <div class="meta-row"><span class="meta-key">Uploaded by</span><span class="meta-val">${escHtml(photo.username || currentUser.username)}</span></div>
+      <div class="meta-row"><span class="meta-key">Date</span><span class="meta-val">${formatDate(photo.created_at)}</span></div>
+      <div class="meta-row"><span class="meta-key">Size</span><span class="meta-val">${formatSize(photo.size)}</span></div>
+      <div class="meta-row"><span class="meta-key">Type</span><span class="meta-val">${photo.mimetype}</span></div>
+    `;
+    const deleteBtn = document.getElementById('lb-delete-btn');
+    deleteBtn.style.display = photo.user_id === currentUser.id ? 'block' : 'none';
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+ 
+  function closeLightbox(e) {
+    if (e && e.target !== document.getElementById('lightbox')) return;
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+    currentPhoto = null;
+  }
+ 
+  // ── UPLOAD ──
+  let selectedFile = null;
+ 
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('preview-img').src = ev.target.result;
+      document.getElementById('preview-name').textContent = file.name + ` (${formatSize(file.size)})`;
+      document.getElementById('upload-preview').classList.add('show');
+    };
+    reader.readAsDataURL(file);
+    if (!document.getElementById('photo-title').value) {
+      document.getElementById('photo-title').value = file.name.replace(/\.[^.]+$/, '');
+    }
+  }
+ 
+  // Drag and drop
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      document.getElementById('file-input').files = e.dataTransfer.files;
+      handleFileSelect({ target: { files: [file] } });
+    }
+  });
+ 
+  async function uploadPhoto() {
+    if (!selectedFile) return showError('upload-error', 'Please select an image first');
+    const title = document.getElementById('photo-title').value.trim() || selectedFile.name;
+    const desc = document.getElementById('photo-desc').value.trim();
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    const form = new FormData();
+    form.append('photo', selectedFile);
+    form.append('title', title);
+    form.append('description', desc);
+    try {
+      const res = await fetch(`${API}/api/photos`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      selectedFile = null;
+      document.getElementById('file-input').value = '';
+      document.getElementById('photo-title').value = '';
+      document.getElementById('photo-desc').value = '';
+      document.getElementById('upload-preview').classList.remove('show');
+      toast('Photo published successfully!', 'success');
+      loadStats();
+      switchView('all');
+    } catch (e) {
+      showError('upload-error', e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Publish Photo';
+    }
+  }
+ 
+  // ── DOWNLOAD ──
+  async function downloadPhoto(id, filename) {
+    try {
+      const res = await fetch(`${API}/api/photos/${id}/download`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'photo';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Download started', 'success');
+    } catch (e) { toast('Download failed', 'error'); }
+  }
+ 
+  // ── DELETE ──
+  async function deletePhoto(id) {
+    if (!confirm('Delete this photo permanently?')) return;
+    try {
+      const res = await fetch(`${API}/api/photos/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      closeLightbox();
+      toast('Photo deleted', 'success');
+      loadStats();
+      if (currentView === 'my') loadMyPhotos();
+      else loadAllPhotos();
+    } catch (e) { toast('Delete failed', 'error'); }
+  }
+ 
+  // ── UTILS ──
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 5000);
+  }
+ 
+  function toast(msg, type = '') {
+    const container = document.getElementById('toast-container');
+    const div = document.createElement('div');
+    div.className = `toast ${type}`;
+    div.textContent = msg;
+    container.appendChild(div);
+    setTimeout(() => div.remove(), 3500);
+  }
+ 
+  function escHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+ 
+  function formatDate(str) {
+    if (!str) return '—';
+    return new Date(str).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+ 
+  function formatSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+ 
+  // Enter key handlers
+  document.getElementById('login-password').addEventListener('keydown', e => e.key === 'Enter' && login());
+  document.getElementById('login-username').addEventListener('keydown', e => e.key === 'Enter' && login());
+  document.getElementById('reg-confirm').addEventListener('keydown', e => e.key === 'Enter' && register());
+ 
+  // Escape to close lightbox
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox({ target: document.getElementById('lightbox') }); });
+</script>
 </body>
 </html>
